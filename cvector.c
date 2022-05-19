@@ -51,10 +51,13 @@ void Vec_insert(Vec *this, void *new_obj, size_t index) {
 	Vec_realloc(this); // Realloc if necessary
 	size_t copy_size = (this->size++ - index) * this->obj_size;
 	memmove(this->data + index + 1, this->data + index, copy_size);
+	memcpy(this->data + index, new_obj, this->obj_size);
 }
 
 void Vec_remove(Vec *this, size_t index) {
 	Vec_realloc(this); // Realloc if necessary
+	size_t copy_size = (this->size-- - index) * this->obj_size;
+	memmove(this->data + index, this->data + index + 1, copy_size);
 }
 
 void *Vec_get(Vec *this, size_t index) {
