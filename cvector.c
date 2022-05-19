@@ -85,7 +85,7 @@ int Vec_insert(Vec *this, void *new_obj, size_t index) {
 
 int Vec_remove(Vec *this, size_t index) {
 	if (index >= this->size) {
-		this->error = "Attempted to remove an item from an invalid index.\n";
+		this->error = "Attempted to remove an item from an invalid index.";
 		return 0;
 	}
 	
