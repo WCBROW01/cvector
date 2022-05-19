@@ -37,7 +37,7 @@ void Vec_destroy(Vec *this, Vec_free_t free_func) {
 static void Vec_realloc(Vec *this) {
 	if (this->size == this->cap) {
 		this->data = reallocarray(this->data, this->cap += 8, this->obj_size);
-	} else if (this->size > initial_size && this->size < this->cap - 16) {
+	} else if (this->size > this->initial_size && this->size < this->cap - 16) {
 		this->data = reallocarray(this->data, this->cap -= 16, this->obj_size);
 	}
 }
