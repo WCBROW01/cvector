@@ -29,6 +29,8 @@ void Vec_destroy(Vec *this, Vec_free_t free_func) {
 		for (void *obj = this; obj < this->data + this->obj_size * this->size; obj += this->obj_size) {
 			free_func(obj);
 		}
+		
+		free_func(this->popbuf);
 	}
 	
 	free(this->data);
@@ -64,7 +66,7 @@ void *Vec_get(Vec *this, size_t index) {
 
 int Vec_set(Vec *this, size_t index, void *new_obj) {
 	if (index >= this->size) {
-		this->error = "Attempted to access invalid index %zu of a vector of size %zu.";
+		this->error = "Attempted to access invalid index of a vector.";
 		return 0;
 	} else {
 		memcpy(this->data + this->obj_size * index, new_obj, this->obj_size);
@@ -74,26 +76,28 @@ int Vec_set(Vec *this, size_t index, void *new_obj) {
 }
 
 int Vec_insert(Vec *this, void *new_obj, size_t index) {
-	if (!Vec_realloc(this)) return 0; // Realloc if necessary
+	if (!Vec_realloc(this)) {
+		return 0;
+	} else {	
+		size_t copy_size = (this->size++ - index) * this->obj_size;
+		memmove(this->data + this->obj_size * (index + 1), this->data + this->obj_size * index, copy_size);
+		memcpy(this->data + this->obj_size * index, new_obj, this->obj_size);
+		return 1;
+	}
 	
-	size_t copy_size = (this->size++ - index) * this->obj_size;
-	memmove(this->data + this->obj_size * (index + 1), this->data + this->obj_size * index, copy_size);
-	memcpy(this->data + this->obj_size * index, new_obj, this->obj_size);
-
-	return 1;
 }
 
 int Vec_remove(Vec *this, size_t index) {
 	if (index >= this->size) {
 		this->error = "Attempted to remove an item from an invalid index.";
 		return 0;
+	} else if (!Vec_realloc(this)) {
+		return 0;
+	} else {
+		size_t copy_size = (this->size-- - index) * this->obj_size;
+		memmove(this->data + this->obj_size * index, this->data + this->obj_size * (index + 1), copy_size);
+		return 1;
 	}
-	
-	if (!Vec_realloc(this)) return 0; // Realloc if necessary
-	size_t copy_size = (this->size-- - index) * this->obj_size;
-	memmove(this->data + this->obj_size * index, this->data + this->obj_size * (index + 1), copy_size);
-	
-	return 1;
 }
 
 int Vec_push(Vec *this, void *new_obj) {
@@ -108,10 +112,11 @@ void *Vec_pop(Vec *this) {
 	if (this->size == 0) {
 		this->error = "Attempted to remove an item from an empty vector.";
 		return NULL;
+	} else if (!Vec_realloc(this)) {
+		return NULL;
+	} else {	
+		return memcpy(this->popbuf, this->data + this->obj_size * --this->size, this->obj_size);
 	}
-	
-	Vec_realloc(this);
-	return memcpy(this->popbuf, this->data + this->obj_size * --this->size, this->obj_size);
 }
 
 const char *Vec_error(Vec *this) {
