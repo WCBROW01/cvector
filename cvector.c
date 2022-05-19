@@ -1,21 +1,29 @@
-#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "cvector.h"
 
+struct vec_internal {
+	Vec ext;
+	size_t cap, obj_size, initial_len;
+	const char *error;
+	char popbuf[]; // intermediate buffer for popped items.
+};
+
 // Create a Vec with a default size.
-Vec *Vec_create_with_size(size_t obj_size, size_t initial_size) {
-	Vec *ret = malloc(sizeof(Vec) + obj_size);
-	*ret = (Vec) {
-		.data = malloc(initial_size * obj_size),
-		.cap = initial_size,
-		.size = 0,
+Vec *Vec_create_with_size(size_t obj_size, size_t initial_len) {
+	struct vec_internal *ret = malloc(sizeof(struct vec_internal) + obj_size);
+	*ret = (struct vec_internal) {
+		.ext = {
+			.data = malloc(initial_len * obj_size),
+			.len = 0
+		},
+		.cap = initial_len,
 		.obj_size = obj_size,
-		.initial_size = initial_size
+		.initial_len = initial_len
 	};
 	
-	return ret;
+	return (Vec*) ret;
 }
 
 // Takes the object size as a parameter
@@ -25,15 +33,18 @@ Vec *Vec_create(size_t obj_size) {
 
 // Takes the object and a custom free function, or NULL if one is not required.
 void Vec_destroy(Vec *this, Vec_free_t free_func) {
+	struct vec_internal *internal = (struct vec_internal*) this;
+	
 	if (free_func != NULL) {
-		for (void *obj = this; obj < this->data + this->obj_size * this->size; obj += this->obj_size) {
+		for (void *obj = this; obj < this->data + internal->obj_size * this->len; obj += internal->obj_size) {
 			free_func(obj);
 		}
-		
-		free_func(this->popbuf);
+
+		if (internal->popbuf != NULL) free_func(internal->popbuf);
 	}
 	
 	free(this->data);
+	free(this);
 }
 
 static int log2i(size_t x) {
@@ -44,13 +55,15 @@ static int log2i(size_t x) {
 
 // TODO: Use another algorithm to do this logarithmically.
 static int Vec_realloc(Vec *this) {
+	struct vec_internal *internal = (struct vec_internal*) this;
+	
 	void *new_array = this->data;
 
-	if (this->size == this->cap) {
-		this->cap += this->size == 1 ? 1 : log2i(this->size);
-		new_array = reallocarray(this->data, this->cap, this->obj_size);
-	} else if (this->size > this->initial_size && this->size < this->cap - log2i(this->cap) * 2) {
-		new_array = reallocarray(this->data, this->cap = this->size, this->obj_size);
+	if (this->len == internal->cap) {
+		internal->cap += this->len == 1 ? 1 : log2i(this->len);
+		new_array = reallocarray(this->data, internal->cap, internal->obj_size);
+	} else if (this->len > internal->initial_len && this->len < internal->cap - log2i(internal->cap) * 2) {
+		new_array = reallocarray(this->data, internal->cap = this->len, internal->obj_size);
 	}
 
 	if (new_array == NULL) {
@@ -63,69 +76,81 @@ static int Vec_realloc(Vec *this) {
 }
 
 void *Vec_get(Vec *this, size_t index) {
-	if (index >= this->size) {
+	struct vec_internal *internal = (struct vec_internal*) this;
+
+	if (index >= this->len) {
 		this->error = "Attempted to access invalid index of a vector.";
 		return NULL;
 	} else {
-		return this->data + this->obj_size * index;
+		return this->data + internal->obj_size * index;
 	}
 }
 
 int Vec_set(Vec *this, size_t index, void *new_obj) {
-	if (index >= this->size) {
+	struct vec_internal *internal = (struct vec_internal*) this;
+	
+	if (index >= this->len) {
 		this->error = "Attempted to access invalid index of a vector.";
 		return 0;
 	} else {
-		memcpy(this->data + this->obj_size * index, new_obj, this->obj_size);
+		memcpy(this->data + internal->obj_size * index, new_obj, internal->obj_size);
 		return 1;
 	}
 	
 }
 
 int Vec_insert(Vec *this, void *new_obj, size_t index) {
+	struct vec_internal *internal = (struct vec_internal*) this;
+	
 	if (!Vec_realloc(this)) {
 		return 0;
 	} else {	
-		size_t copy_size = (this->size++ - index) * this->obj_size;
-		memmove(this->data + this->obj_size * (index + 1), this->data + this->obj_size * index, copy_size);
-		memcpy(this->data + this->obj_size * index, new_obj, this->obj_size);
+		size_t copy_size = (this->len++ - index) * internal->obj_size;
+		memmove(this->data + internal->obj_size * (index + 1), this->data + internal->obj_size * index, copy_size);
+		memcpy(this->data + internal->obj_size * index, new_obj, internal->obj_size);
 		return 1;
 	}
 	
 }
 
 int Vec_remove(Vec *this, size_t index) {
-	if (index >= this->size) {
+	struct vec_internal *internal = (struct vec_internal*) this;
+
+	if (index >= this->len) {
 		this->error = "Attempted to remove an item from an invalid index.";
 		return 0;
 	} else if (!Vec_realloc(this)) {
 		return 0;
 	} else {
-		size_t copy_size = (this->size-- - index) * this->obj_size;
-		memmove(this->data + this->obj_size * index, this->data + this->obj_size * (index + 1), copy_size);
+		size_t copy_size = (this->len-- - index) * internal->obj_size;
+		memmove(this->data + internal->obj_size * index, this->data + internal->obj_size * (index + 1), copy_size);
 		return 1;
 	}
 }
 
 int Vec_push(Vec *this, void *new_obj) {
-	return Vec_insert(this, new_obj, this->size);
+	return Vec_insert(this, new_obj, this->len);
 }
 
 void *Vec_peek(Vec *this) {
-	return Vec_get(this, this->size - 1);
+	return Vec_get(this, this->len - 1);
 }
 
 void *Vec_pop(Vec *this) {
-	if (this->size == 0) {
+	struct vec_internal *internal = (struct vec_internal*) this;
+
+	if (this->len == 0) {
 		this->error = "Attempted to remove an item from an empty vector.";
 		return NULL;
 	} else if (!Vec_realloc(this)) {
 		return NULL;
 	} else {	
-		return memcpy(this->popbuf, this->data + this->obj_size * --this->size, this->obj_size);
+		return memcpy(internal->popbuf, this->data + internal->obj_size * --this->len, internal->obj_size);
 	}
 }
 
 const char *Vec_error(Vec *this) {
-	return this->error;
+	struct vec_internal *internal = (struct vec_internal*) this;
+
+	return internal->error;
 }
