@@ -20,7 +20,7 @@ Vec *Vec_create_with_size(size_t obj_size, size_t initial_size) {
 
 // Takes the object size as a parameter
 Vec *Vec_create(size_t obj_size) {
-	return Vec_create_with_size(obj_size, 8);
+	return Vec_create_with_size(obj_size, 4);
 }
 
 // Takes the object and a custom free function, or NULL if one is not required.
@@ -36,14 +36,21 @@ void Vec_destroy(Vec *this, Vec_free_t free_func) {
 	free(this->data);
 }
 
+static int log2i(size_t x) {
+	int i;
+	for (i = 0; x > 0; x >>= 1, ++i);
+	return i - 1;
+}
+
 // TODO: Use another algorithm to do this logarithmically.
 static int Vec_realloc(Vec *this) {
 	void *new_array = this->data;
 
 	if (this->size == this->cap) {
-		new_array = reallocarray(this->data, this->cap += 8, this->obj_size);
-	} else if (this->size > this->initial_size && this->size < this->cap - 16) {
-		new_array = reallocarray(this->data, this->cap -= 16, this->obj_size);
+		this->cap += this->size == 1 ? 1 : log2i(this->size);
+		new_array = reallocarray(this->data, this->cap, this->obj_size);
+	} else if (this->size > this->initial_size && this->size < this->cap - log2i(this->cap) * 2) {
+		new_array = reallocarray(this->data, this->cap = this->size, this->obj_size);
 	}
 
 	if (new_array == NULL) {
