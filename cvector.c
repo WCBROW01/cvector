@@ -36,9 +36,11 @@ void Vec_destroy(Vec *this, Vec_free_t free_func) {
 	struct vec_internal *internal = (struct vec_internal*) this;
 	
 	if (free_func != NULL) {
-		for (void *obj = this; obj < this->data + internal->obj_size * this->len; obj += internal->obj_size) {
-			free_func(obj);
-		}
+		for (
+			void *obj = this->data;
+			obj < this->data + internal->obj_size * this->len;
+			obj += internal->obj_size
+		) free_func(obj);
 
 		if (internal->popbuf != NULL) free_func(internal->popbuf);
 	}
@@ -53,7 +55,23 @@ static int log2i(size_t x) {
 	return i - 1;
 }
 
-// TODO: Use another algorithm to do this logarithmically.
+Vec *Vec_copy(Vec *this, Vec_copy_t copy_func) {
+	struct vec_internal *internal = (struct vec_internal*) this;
+
+	struct vec_internal *ret = malloc(sizeof(struct vec_internal) + internal->obj_size);
+	memcpy(ret, this, sizeof(struct vec_internal) + internal->obj_size);
+	ret->ext.data = malloc(ret->cap * ret->obj_size);
+	
+	if (copy_func != NULL) {
+		for (size_t i = 0; i < this->len; ++i)
+			copy_func(ret->ext.data + i * ret->obj_size, this->data + i * ret->obj_size);
+	} else {
+		memcpy(ret->ext.data, this->data, ret->cap * ret->obj_size);
+	}
+	
+	return (Vec*) ret;
+}
+
 static int Vec_realloc(Vec *this) {
 	struct vec_internal *internal = (struct vec_internal*) this;
 	
@@ -62,7 +80,10 @@ static int Vec_realloc(Vec *this) {
 	if (this->len == internal->cap) {
 		internal->cap += this->len == 1 ? 1 : log2i(this->len);
 		new_array = reallocarray(this->data, internal->cap, internal->obj_size);
-	} else if (this->len > internal->initial_len && this->len < internal->cap - log2i(internal->cap) * 2) {
+	} else if (
+		this->len > internal->initial_len &&
+		this->len < internal->cap - log2i(internal->cap) * 2
+	) {
 		new_array = reallocarray(this->data, internal->cap = this->len, internal->obj_size);
 	}
 
@@ -113,18 +134,19 @@ int Vec_insert(Vec *this, void *new_obj, size_t index) {
 	
 }
 
-int Vec_remove(Vec *this, size_t index) {
+void *Vec_remove(Vec *this, size_t index) {
 	struct vec_internal *internal = (struct vec_internal*) this;
 
 	if (index >= this->len) {
 		this->error = "Attempted to remove an item from an invalid index.";
-		return 0;
+		return NULL;
 	} else if (!Vec_realloc(this)) {
-		return 0;
+		return NULL;
 	} else {
+		memcpy(internal->popbuf, this->data + internal->obj_size * index, internal->obj_size);
 		size_t copy_size = (this->len-- - index) * internal->obj_size;
 		memmove(this->data + internal->obj_size * index, this->data + internal->obj_size * (index + 1), copy_size);
-		return 1;
+		return internal->popbuf;
 	}
 }
 

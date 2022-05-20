@@ -14,7 +14,11 @@ typedef struct {
 	char popbuf[]; // intermediate buffer for popped items.
 } Vec;
 
+// void Vec_free_t(void *ptr);
 typedef void (*Vec_free_t)(void*);
+
+// void *Vec_copy_t(void *dest, void *src);
+typedef void *(*Vec_copy_t)(void*, void*);
 
 // Create a Vec with a default size.
 Vec *Vec_create_with_size(size_t obj_size, size_t initial_len);
@@ -24,6 +28,10 @@ Vec *Vec_create(size_t obj_size);
 
 // Takes the object and a custom free function, or NULL if one is not required.
 void Vec_destroy(Vec *this, Vec_free_t free_func);
+
+/* Creates a copy of a vector. If no copy function is provided, the vector
+ * data will be copied as if memcpy() was used to copy the data. */
+Vec *Vec_copy(Vec *this, Vec_copy_t copy_func);
 
 // Get an item from the desired index of a vector.
 void *Vec_get(Vec *this, size_t index);
@@ -35,7 +43,7 @@ int Vec_set(Vec *this, size_t index, void *new_obj);
 int Vec_insert(Vec *this, void *new_obj, size_t index);
 
 // Remove an item from the desired index of a vector
-int Vec_remove(Vec *this, size_t index);
+void *Vec_remove(Vec *this, size_t index);
 
 // Push an item to the end of the vector.
 int Vec_push(Vec *this, void *new_obj);
