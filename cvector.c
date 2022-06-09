@@ -88,7 +88,7 @@ static int Vec_realloc(Vec *this) {
 	}
 
 	if (new_array == NULL) {
-		this->error = "Failed to reallocate vector.";
+		internal->error = "Failed to reallocate vector.";
 		return 0;
 	} else {
 		this->data = new_array;
@@ -100,7 +100,7 @@ void *Vec_get(Vec *this, size_t index) {
 	struct vec_internal *internal = (struct vec_internal*) this;
 
 	if (index >= this->len) {
-		this->error = "Attempted to access invalid index of a vector.";
+		internal->error = "Attempted to access invalid index of a vector.";
 		return NULL;
 	} else {
 		return this->data + internal->obj_size * index;
@@ -111,7 +111,7 @@ int Vec_set(Vec *this, size_t index, void *new_obj) {
 	struct vec_internal *internal = (struct vec_internal*) this;
 	
 	if (index >= this->len) {
-		this->error = "Attempted to access invalid index of a vector.";
+		internal->error = "Attempted to access invalid index of a vector.";
 		return 0;
 	} else {
 		memcpy(this->data + internal->obj_size * index, new_obj, internal->obj_size);
@@ -138,7 +138,7 @@ void *Vec_remove(Vec *this, size_t index) {
 	struct vec_internal *internal = (struct vec_internal*) this;
 
 	if (index >= this->len) {
-		this->error = "Attempted to remove an item from an invalid index.";
+		internal->error = "Attempted to remove an item from an invalid index.";
 		return NULL;
 	} else if (!Vec_realloc(this)) {
 		return NULL;
@@ -162,7 +162,7 @@ void *Vec_pop(Vec *this) {
 	struct vec_internal *internal = (struct vec_internal*) this;
 
 	if (this->len == 0) {
-		this->error = "Attempted to remove an item from an empty vector.";
+		internal->error = "Attempted to remove an item from an empty vector.";
 		return NULL;
 	} else if (!Vec_realloc(this)) {
 		return NULL;

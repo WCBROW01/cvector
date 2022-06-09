@@ -9,9 +9,7 @@
 // data is just an array, so you can cast it and use it as such.
 typedef struct {
 	void *data;
-	size_t cap, len, obj_size, initial_len;
-	const char *error;
-	char popbuf[]; // intermediate buffer for popped items.
+	size_t len;
 } Vec;
 
 // void Vec_free_t(void *ptr);
