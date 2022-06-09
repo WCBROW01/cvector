@@ -37,6 +37,11 @@ void *Vec_get(Vec *this, size_t index);
 // Copy an item to the desired index of a vector.
 int Vec_set(Vec *this, size_t index, void *new_obj);
 
+/* Truncate or extend a vector to a given length. If the vector is extended,
+ * the new data in the vector is uninitialized and the values are undefined.
+ * However, you may initialize them yourself using memset. */
+int Vec_resize(Vec *this, size_t len);
+
 // Insert an item at the desired index of a vector.
 int Vec_insert(Vec *this, void *new_obj, size_t index);
 

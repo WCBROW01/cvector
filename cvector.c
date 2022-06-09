@@ -77,8 +77,8 @@ static int Vec_realloc(Vec *this) {
 	
 	void *new_array = this->data;
 
-	if (this->len == internal->cap) {
-		internal->cap += this->len == 1 ? 1 : log2i(this->len);
+	if (this->len <= internal->cap) {
+		internal->cap = this->len + log2i(this->len);
 		new_array = reallocarray(this->data, internal->cap, internal->obj_size);
 	} else if (
 		this->len > internal->initial_len &&
@@ -118,6 +118,14 @@ int Vec_set(Vec *this, size_t index, void *new_obj) {
 		return 1;
 	}
 	
+}
+
+int Vec_resize(Vec *this, size_t len) {
+	size_t old_len = this->len;
+	this->len = len;
+	int status = Vec_realloc(this);
+	if (!status) this->len = old_len;
+	return status;
 }
 
 int Vec_insert(Vec *this, void *new_obj, size_t index) {
