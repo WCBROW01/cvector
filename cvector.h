@@ -24,6 +24,12 @@ Vec *Vec_create_with_cap(size_t obj_size, size_t initial_cap);
 // Takes the object size as a parameter
 Vec *Vec_create(size_t obj_size);
 
+// Create a Vec with the contents of an array. Supports deep copies.
+Vec *Vec_create_from_array(void *src, Vec_copy_t copy_func, size_t obj_size, size_t len);
+
+// Shortcut for stack arrays, since they usually have a stored length.
+#define Vec_create_from_stack_array(src, copy_func) Vec_create_from_array(src, copy_func, sizeof(src[0]), sizeof(src) / sizeof(src[0]))
+
 // Takes the object and a custom free function, or NULL if one is not required.
 void Vec_destroy(Vec *this, Vec_free_t free_func);
 

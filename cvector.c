@@ -34,6 +34,25 @@ Vec *Vec_create(size_t obj_size) {
 	return Vec_create_with_cap(obj_size, 4);
 }
 
+/* This function does NOT support deep copies, to make it easier to support stack arrays.
+ * If you need a deep copy, you must do it yourself. */
+Vec *Vec_create_from_array(void *src, Vec_copy_t copy_func, size_t obj_size, size_t len) {
+	Vec *ret = Vec_create(obj_size);
+	if (Vec_resize(ret, len)) {
+		if (copy_func != NULL) {
+			for (size_t i = 0; i < len; ++i)
+				copy_func(ret->data + i * obj_size, ret->data + i * obj_size);
+		} else {
+			memcpy(ret->data, src, len * obj_size);
+		}
+		
+		return ret;
+	} else {
+		Vec_destroy(ret, NULL);
+		return NULL;
+	}
+}
+
 // Takes the object and a custom free function, or NULL if one is not required.
 void Vec_destroy(Vec *this, Vec_free_t free_func) {
 	struct vec_internal *internal = (struct vec_internal*) this;
