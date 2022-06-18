@@ -18,8 +18,8 @@ typedef void (*Vec_free_t)(void*);
 // void *Vec_copy_t(void *dest, void *src);
 typedef void *(*Vec_copy_t)(void*, void*);
 
-// Create a Vec with a default size.
-Vec *Vec_create_with_size(size_t obj_size, size_t initial_len);
+// Create a Vec with enough memory for initial_cap items
+Vec *Vec_create_with_cap(size_t obj_size, size_t initial_cap);
 
 // Takes the object size as a parameter
 Vec *Vec_create(size_t obj_size);

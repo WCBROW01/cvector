@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -5,22 +6,24 @@
 
 struct vec_internal {
 	Vec ext;
-	size_t cap, obj_size, initial_len;
+	size_t cap, obj_size, initial_cap;
 	const char *error;
+	bool allocated;
 	char popbuf[]; // intermediate buffer for popped items.
 };
 
-// Create a Vec with a default size.
-Vec *Vec_create_with_size(size_t obj_size, size_t initial_len) {
+// Create a Vec with enough memory for initial_cap items
+Vec *Vec_create_with_cap(size_t obj_size, size_t initial_cap) {
 	struct vec_internal *ret = malloc(sizeof(struct vec_internal) + obj_size);
 	*ret = (struct vec_internal) {
 		.ext = {
-			.data = malloc(initial_len * obj_size),
+			.data = NULL,
 			.len = 0
 		},
-		.cap = initial_len,
+		.cap = initial_cap,
 		.obj_size = obj_size,
-		.initial_len = initial_len
+		.initial_cap = initial_cap,
+		.allocated = false
 	};
 	
 	return (Vec*) ret;
@@ -28,7 +31,7 @@ Vec *Vec_create_with_size(size_t obj_size, size_t initial_len) {
 
 // Takes the object size as a parameter
 Vec *Vec_create(size_t obj_size) {
-	return Vec_create_with_size(obj_size, 4);
+	return Vec_create_with_cap(obj_size, 4);
 }
 
 // Takes the object and a custom free function, or NULL if one is not required.
@@ -66,7 +69,7 @@ Vec *Vec_copy(Vec *this, Vec_copy_t copy_func) {
 		for (size_t i = 0; i < this->len; ++i)
 			copy_func(ret->ext.data + i * ret->obj_size, this->data + i * ret->obj_size);
 	} else {
-		memcpy(ret->ext.data, this->data, ret->cap * ret->obj_size);
+		memcpy(ret->ext.data, this->data, ret->ext.len * ret->obj_size);
 	}
 	
 	return (Vec*) ret;
@@ -77,11 +80,14 @@ static int Vec_realloc(Vec *this) {
 	
 	void *new_array = this->data;
 
-	if (this->len <= internal->cap) {
-		internal->cap = this->len + log2i(this->len);
+	if (!internal->allocated) {
+		new_array = malloc(internal->initial_cap * internal->obj_size);
+		internal->allocated = !!new_array;
+	} else if (this->len <= internal->cap) {
+		internal->cap = this->len == 1 ? 2 : this->len + log2i(this->len);
 		new_array = reallocarray(this->data, internal->cap, internal->obj_size);
 	} else if (
-		this->len > internal->initial_len &&
+		this->len > internal->initial_cap &&
 		this->len < internal->cap - log2i(internal->cap) * 2
 	) {
 		new_array = reallocarray(this->data, internal->cap = this->len, internal->obj_size);
