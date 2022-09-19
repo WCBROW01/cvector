@@ -8,7 +8,7 @@ struct vec_internal {
 	Vec ext;
 	size_t cap, obj_size, initial_cap;
 	const char *error;
-	bool allocated, data_popped;
+	bool allocated;
 	char popbuf[]; // intermediate buffer for popped items.
 };
 
